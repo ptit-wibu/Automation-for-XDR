@@ -1,4 +1,4 @@
-def NEXUS_CRED = 'nexus-security'
+def NEXUS_CRED = 'nexus_security'
 
 
 withCredentials([[$class: 'UsernamePasswordMultiBinding', 
