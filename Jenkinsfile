@@ -1,3 +1,6 @@
+def NEXUS_CRED = 'nexus-security'
+
+
 withCredentials([[$class: 'UsernamePasswordMultiBinding', 
   credentialsId: "${NEXUS_CRED}", 
   usernameVariable: 'NEXUS_USER', 
