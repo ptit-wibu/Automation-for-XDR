@@ -22,7 +22,10 @@ pipeline {
     stages {
         stage('Vault Test') {
             steps {
-                withVault([vaultSecrets: [], vaultCredentialId: env.VAULT_CRED_ID]) {
+                withVault(configuration: [
+                    vaultUrl: env.VAULT_ADDR,
+                    vaultCredentialId: env.VAULT_CRED_ID
+                ], vaultSecrets: []) {
                     echo 'Vault connection successful!'
                 }
             }
