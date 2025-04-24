@@ -27,7 +27,7 @@ pipeline {
                     vaultCredentialId: env.VAULT_CRED_ID
                 ], vaultSecrets: [
                     [
-                        path: 'secret/vault', // Đường dẫn bí mật trong Vault
+                        path: 'vault', // Đường dẫn bí mật trong Vault
                         secretValues: [
                             [envVar: 'MY_SECRET', vaultKey: 'username'] // Biến môi trường và khóa bí mật
                         ]
