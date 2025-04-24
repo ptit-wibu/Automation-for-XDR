@@ -1,3 +1,4 @@
+/*
 def NEXUS_CRED = 'nexus_security'
 
 node {
@@ -9,5 +10,22 @@ node {
           echo "Username: $NEXUS_USER"
           echo "Password Length: ${#NEXUS_PASSWORD}"
         '''
+    }
+}
+*/
+pipeline {
+    agent any
+    environment {
+        VAULT_ADDR = 'http://172.22.3.91:8200'
+        VAULT_CRED_ID = 'hvs.RZxr0iejq06Wh82rnVB0TSQC' // ID trong Jenkins Credentials
+    }
+    stages {
+        stage('Vault Test') {
+            steps {
+                withVault([vaultSecrets: [], vaultCredentialId: env.VAULT_CRED_ID]) {
+                    echo 'Vault connection successful!'
+                }
+            }
+        }
     }
 }
