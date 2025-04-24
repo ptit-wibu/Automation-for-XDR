@@ -25,7 +25,15 @@ pipeline {
                 withVault(configuration: [
                     vaultUrl: env.VAULT_ADDR,
                     vaultCredentialId: env.VAULT_CRED_ID
-                ], vaultSecrets: []) {
+                ], vaultSecrets: [
+                    [
+                        path: 'secret/vault', // Đường dẫn bí mật trong Vault
+                        secretValues: [
+                            [envVar: 'MY_SECRET', vaultKey: 'username'] // Biến môi trường và khóa bí mật
+                        ]
+                    ]
+                ]) {
+                    sh 'echo $MY_SECRET' // In bí mật (chỉ để kiểm tra, cẩn thận với log)
                     echo 'Vault connection successful!'
                 }
             }
