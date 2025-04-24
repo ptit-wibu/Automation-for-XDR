@@ -17,7 +17,7 @@ pipeline {
     agent any
     environment {
         VAULT_ADDR = 'http://172.22.3.91:8200'
-        VAULT_CRED_ID = 'hvs.RZxr0iejq06Wh82rnVB0TSQC' // ID trong Jenkins Credentials
+        VAULT_CRED_ID = 'd375013e-e3c3-42b8-a417-58b4dee65b99' // ID trong Jenkins Credentials
     }
     stages {
         stage('Vault Test') {
