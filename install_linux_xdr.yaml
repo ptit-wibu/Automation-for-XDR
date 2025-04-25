@@ -1,0 +1,51 @@
+---
+
+
+- name: Install anti-virus agent on Linux servers
+  hosts:
+    - svtech_linux_hosts
+  become: true
+  vars:
+    - xdr_gz_file: XDR_DucLN_Linux_deb.tar.gz
+    - xdr_file: "cortex-8.7.0.131661.deb"
+    - install_dir: "/home/demo/cortex-xdr"
+    - nexus_addr: "http://172.22.3.92:8081/"
+
+  tasks:
+    - name: "Check connection to hosts"
+      ansible.builtin.ping:
+
+    - name: "Create xdr directory"
+      ansible.builtin.file:
+        path: "{{ install_dir }}"
+        state: directory
+
+    - name: "Download XDR installation files"
+      ansible.builtin.get_url:
+        url: "http://172.22.3.92:8081/repository/Cortex-XDR/Cortex_XDR/XDR_DucLN_Linux_deb.tar.gz"
+        dest: "{{ install_dir }}/"
+        url_username: "{{ nexus_user }}"
+        url_password: "{{ nexus_password }}"
+
+    - name: "Create XDR /etc/panw"
+      ansible.builtin.file:
+        path: "/etc/panw"
+        state: directory
+
+    - name: "Unzip CortexXDR installation file"
+      ansible.builtin.unarchive:
+        src: "{{ install_dir }}/{{ xdr_gz_file }}"
+        dest: "{{ install_dir }}"
+        remote_src: yes
+
+    - name: "Copy config file"
+      ansible.builtin.copy:
+        src: "{{ install_dir }}/cortex.conf"
+        dest: "/etc/panw/"
+        remote_src: true
+
+    - name: "Install CortexXDR rpm from a local file"
+      ansible.builtin.apt:
+        deb: "{{ install_dir }}/{{ xdr_file }}"
+        state: present
+        update_cache: yes
