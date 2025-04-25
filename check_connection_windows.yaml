@@ -1,0 +1,13 @@
+---
+
+- name: Check Windows Connection
+  hosts:
+    - svtech_window_hosts
+  tasks:
+    - name: Check port status
+      win_shell: Test-NetConnection -ComputerName localhost -Port 5986
+      register: port_status
+    
+    - name: Display Port status
+      debug:
+        var: port_status.stdout_lines
