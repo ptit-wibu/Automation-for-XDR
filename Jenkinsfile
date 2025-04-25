@@ -54,8 +54,8 @@ node {
           [
               path: "${VAULT_PATH_SSH}", engineVersion: 2,
               secretValues: [
-                [vaultKey: 'password'], [vaultKey: 'username'],
-                /*[vaultKey: 'linux_pass'], [vaultKey: 'linux_user'],*/
+                [vaultKey: 'windows_pass'], [vaultKey: 'windows_user'],
+                [vaultKey: 'linux_pass'], [vaultKey: 'linux_user'],
               ]
           ]
   ]
