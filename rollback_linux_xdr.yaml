@@ -1,0 +1,16 @@
+---
+
+- name: Uninstall anti-virus agent on Linux servers
+  hosts:
+    - svtech_linux_hosts
+  become: true
+
+  tasks:
+    - name: "Check SSH connection to hosts"
+      ansible.builtin.ping:
+
+    - name: "Uninstall CortexXDR"
+      ansible.builtin.apt:
+        name: cortex-agent
+        state: absent
+        update_cache: yes
