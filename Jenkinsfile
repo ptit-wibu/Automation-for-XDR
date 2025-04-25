@@ -46,7 +46,7 @@ pipeline {
 
 node { 
   def VAULT_ADDR = 'http://172.22.3.91:8200/'
-  def VAULT_PATH_SSH = 'secret/linux'
+  def VAULT_PATH_SSH = 'linux'
   def NEXUS_CRED = 'nexus_security'
   def NEXUS_ADDR = 'http://172.22.3.92:8081/'
 
