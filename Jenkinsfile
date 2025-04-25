@@ -47,7 +47,7 @@ pipeline {
 node { 
   def VAULT_ADDR = 'http://172.22.3.91:8200/'
   def VAULT_PATH_SSH = 'secret/linux'
-  def NEXUS_CRED = 'nexus-security'
+  def NEXUS_CRED = 'nexus_security'
   def NEXUS_ADDR = 'http://172.22.3.92:8081/'
 
   def secrets = [
@@ -55,7 +55,7 @@ node {
               path: "${VAULT_PATH_SSH}", engineVersion: 1,
               secretValues: [
                 [vaultKey: 'password'], [vaultKey: 'username'],
-                /*[vaultKey: 'linux_pass'], [vaultKey: 'linux_user'],*/
+                [vaultKey: 'linux_pass'], [vaultKey: 'linux_user'],
               ]
           ]
   ]
