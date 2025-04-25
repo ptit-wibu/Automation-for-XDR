@@ -160,4 +160,107 @@ if (listServices.contains("check_connection_linux")){
     }
   }
 }
+if (listServices.contains("check_connection_windows")){
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
+    withVault([configuration: configuration, vaultSecrets: secrets]) {
+      stage("Check connection for Windows") {
+        sh """
+        ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass} nexus_user=${NEXUS_USER} nexus_password=${NEXUS_PASSWORD}" check_connection_windows.yaml
+        """
+      }
+    }
+  }
+}
+
+// ------------------ Linux XDR ------------------
+if (listServices.contains("install_linux_xdr")){
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
+    withVault([configuration: configuration, vaultSecrets: secrets]) {
+      stage("Install Linux XDR Agent") {
+        sh """
+        ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass} nexus_user=${NEXUS_USER} nexus_password=${NEXUS_PASSWORD}" install_linux_xdr.yaml
+        """
+      }
+    }
+  }
+}
+
+if (listServices.contains("rollback_linux_xdr")){
+  withVault([configuration: configuration, vaultSecrets: secrets]) {
+    stage("Rollback Linux XDR") {
+      sh """
+      ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass}" rollback_linux_xdr.yaml
+      """
+    }
+  }
+}
+
+// ------------------ Linux Prisma ------------------
+if (listServices.contains("install_linux_prisma")){
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
+    withVault([configuration: configuration, vaultSecrets: secrets]) {
+      stage("Install Linux Prisma Cloud") {
+        sh """
+        ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass}" install_linux_prisma.yaml
+        """
+      }
+    }
+  }
+}
+
+if (listServices.contains("rollback_linux_prisma")){
+  withVault([configuration: configuration, vaultSecrets: secrets]) {
+    stage("Rollback Linux Prisma Cloud") {
+      sh """
+      ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass}" rollback_linux_prisma.yaml
+      """
+    }
+  }
+}
+
+// ------------------ Windows XDR ------------------
+if (listServices.contains("install_windows_xdr")){
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
+    withVault([configuration: configuration, vaultSecrets: secrets]) {
+      stage("Install Windows XDR Agent") {
+        sh """
+        ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass} nexus_user=${NEXUS_USER} nexus_password=${NEXUS_PASSWORD}" install_windows_xdr.yaml
+        """
+      }
+    }
+  }
+}
+
+if (listServices.contains("rollback_windows_xdr")){
+  withVault([configuration: configuration, vaultSecrets: secrets]) {
+    stage("Rollback Windows XDR") {
+      sh """
+      ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass}" rollback_windows_xdr.yaml
+      """
+    }
+  }
+}
+
+// ------------------ Windows Prisma ------------------
+if (listServices.contains("install_windows_prisma")){
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
+    withVault([configuration: configuration, vaultSecrets: secrets]) {
+      stage("Install Windows Prisma Cloud") {
+        sh """
+        ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass}" install_windows_prisma.yaml
+        """
+      }
+    }
+  }
+}
+
+if (listServices.contains("rollback_windows_prisma")){
+  withVault([configuration: configuration, vaultSecrets: secrets]) {
+    stage("Rollback Windows Prisma Cloud") {
+      sh """
+      ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass}" rollback_windows_prisma.yaml
+      """
+    }
+  }
+}
 }
