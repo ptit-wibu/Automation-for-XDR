@@ -1,0 +1,21 @@
+[svtech_linux_hosts]
+10.1.13.67 ansible_user=demo ansible_password=kali ansible_become_password=kali
+
+[svtech_window_hosts]
+10.1.13.65 ansible_user="Administrator" ansible_password="Admin@123"
+
+[svtech_window_hosts:vars]
+ansible_connection=winrm
+ansible_port=5986
+ansible_winrm_transport=ntlm
+ansible_winrm_server_cert_validation=ignore
+ansible_become=yes
+ansible_become_method=runas
+ansible_become_user=Administrator
+ansible_become_password="Admin@123"
+
+[svtech_linux_hosts:vars]
+ansible_connection=ssh
+ansible_port=22
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
