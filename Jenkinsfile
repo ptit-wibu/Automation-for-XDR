@@ -52,7 +52,7 @@ node {
 
   def secrets = [
           [
-              path: "${VAULT_PATH_SSH}", engineVersion: 1,
+              path: "${VAULT_PATH_SSH}", engineVersion: 2,
               secretValues: [
                 [vaultKey: 'password'], [vaultKey: 'username'],
                 [vaultKey: 'linux_pass'], [vaultKey: 'linux_user'],
