@@ -1,0 +1,7 @@
+- name: Check Linux Connection
+  hosts:
+    - svtech_linux_hosts
+  become: true
+  tasks:
+    - name: Check connection
+      ansible.builtin.ping:
