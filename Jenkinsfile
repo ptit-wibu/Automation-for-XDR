@@ -44,223 +44,192 @@ pipeline {
 }
 */
 
-node { 
-  def VAULT_ADDR = 'http://172.22.3.91:8200/'
-  def VAULT_PATH_SSH = 'linux'
-  def NEXUS_CRED = 'nexus_security'
-  def NEXUS_ADDR = 'http://172.22.3.92:8081/'
+node {
+    // Configuration
+    def VAULT_ADDR = 'http://172.22.3.91:8200/'
+    def VAULT_PATH_SSH = 'linux'
+    def NEXUS_CRED = 'nexus_security'
+    def NEXUS_ADDR = 'http://172.22.3.92:8081/'
 
-  def secrets = [
-          [
-              path: "${VAULT_PATH_SSH}", engineVersion: 2,
-              secretValues: [
+    def secrets = [
+        [
+            path: "${VAULT_PATH_SSH}", engineVersion: 2,
+            secretValues: [
                 [vaultKey: 'windows_pass'], [vaultKey: 'windows_user'],
-                [vaultKey: 'linux_pass'], [vaultKey: 'linux_user'],
-              ]
-          ]
-  ]
+                [vaultKey: 'linux_pass'], [vaultKey: 'linux_user']
+            ]
+        ]
+    ]
 
-  def configuration = [
+    def configuration = [
         vaultUrl: "${VAULT_ADDR}",
         vaultCredentialId: 'd375013e-e3c3-42b8-a417-58b4dee65b99',
         engineVersion: 2
-  ]   
-    
-stage("Checkout SCM") {
-      cleanWs()
-      checkout scm
-}
+    ]
 
-properties([
-    parameters([
-        [
-            $class: 'ChoiceParameter',
-            choiceType: 'PT_SINGLE_SELECT',
-            description: 'Select Build Type',
-            name: 'build_type',
-            randomName: 'choice-parameter-5631314439613978',
-            script: [
-                $class: 'GroovyScript',
-                fallbackScript: [
-                    classpath: [],
-                    sandbox: true,
-                    script:
-                        'return[\'Could not get build type\']'
-                ],
-                script: [
-                    classpath: [],
-                    sandbox: true,
-                    script:
-                        '''
-                        return ["Verify", "Install", "Rollback"]
-                        '''
-                ]
-            ]
+    // Playbook configurations
+    def playbookConfig = [
+        'check_connection_linux': [
+            stageName: 'Check connection for Linux',
+            yamlFile: 'check_connection_linux.yaml',
+            credentials: true,
+            extraVars: { linux_user, linux_pass, nexus_user, nexus_password ->
+                "linux_user=${linux_user} linux_pass=${linux_pass} nexus_user=${nexus_user} nexus_password=${nexus_password}"
+            }
         ],
-        [
-            $class: 'CascadeChoiceParameter',
-            choiceType: 'PT_CHECKBOX',
-            description: 'Select PlayBook',
-            filterLength: 1,
-            filterable: true,
-            name: 'ansiblePlaybook',
-            randomName: 'choice-parameter-banca-5631314456178620',
-            referencedParameters: 'build_type',
-            script: [
-                $class: 'GroovyScript',
-                fallbackScript: [
-                    classpath: [],
-                    sandbox: true,
-                    script:
-                        'return[\'Plz choose something in list\']'
-                ],
+        'check_connection_windows': [
+            stageName: 'Check connection for Windows',
+            yamlFile: 'check_connection_windows.yaml',
+            credentials: true,
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
+                "win_user=${win_user} win_pass=${win_pass} nexus_user=${nexus_user} nexus_password=${nexus_password}"
+            }
+        ],
+        'install_linux_xdr': [
+            stageName: 'Install Linux XDR Agent',
+            yamlFile: 'install_linux_xdr.yaml',
+            credentials: true,
+            extraVars: { linux_user, linux_pass, nexus_user, nexus_password ->
+                "linux_user=${linux_user} linux_pass=${linux_pass} nexus_user=${nexus_user} nexus_password=${nexus_password}"
+            }
+        ],
+        'rollback_linux_xdr': [
+            stageName: 'Rollback Linux XDR',
+            yamlFile: 'rollback_linux_xdr.yaml',
+            credentials: false,
+            extraVars: { linux_user, linux_pass ->
+                "linux_user=${linux_user} linux_pass=${linux_pass}"
+            }
+        ],
+        'install_linux_prisma': [
+            stageName: 'Install Linux Prisma Cloud',
+            yamlFile: 'install_linux_prisma.yaml',
+            credentials: true,
+            extraVars: { linux_user, linux_pass ->
+                "linux_user=${linux_user} linux_pass=${linux_pass}"
+            }
+        ],
+        'rollback_linux_prisma': [
+            stageName: 'Rollback Linux Prisma Cloud',
+            yamlFile: 'rollback_linux_prisma.yaml',
+            credentials: false,
+            extraVars: { linux_user, linux_pass ->
+                "linux_user=${linux_user} linux_pass=${linux_pass}"
+            }
+        ],
+        'install_windows_xdr': [
+            stageName: 'Install Windows XDR Agent',
+            yamlFile: 'install_windows_xdr.yaml',
+            credentials: true,
+            extraVars: { win_user, win_pass, nexus_user, nexus_password ->
+                "win_user=${win_user} win_pass=${win_pass} nexus_user=${nexus_user} nexus_password=${nexus_password}"
+            }
+        ],
+        'rollback_windows_xdr': [
+            stageName: 'Rollback Windows XDR',
+            yamlFile: 'rollback_windows_xdr.yaml',
+            credentials: false,
+            extraVars: { win_user, win_pass ->
+                "win_user=${win_user} win_pass=${win_pass}"
+            }
+        ],
+        'install_windows_prisma': [
+            stageName: 'Install Windows Prisma Cloud',
+            yamlFile: 'install_windows_prisma.yaml',
+            credentials: true,
+            extraVars: { win_user, win_pass ->
+                "win_user=${win_user} win_pass=${win_pass}"
+            }
+        ],
+        'rollback_windows_prisma': [
+            stageName: 'Rollback Windows Prisma Cloud',
+            yamlFile: 'rollback_windows_prisma.yaml',
+            credentials: false,
+            extraVars: { win_user, win_pass ->
+                "win_user=${win_user} win_pass=${win_pass}"
+            }
+        ]
+    ]
+
+    // Helper function to run Ansible playbook
+    def runAnsiblePlaybook(String stageName, String yamlFile, boolean useCredentials, Closure extraVarsClosure) {
+        stage(stageName) {
+            def step = {
+                withVault([configuration: configuration, vaultSecrets: secrets]) {
+                    sh """
+                        ansible-playbook -i host --extra-vars "${extraVarsClosure.call(linux_user, linux_pass, windows_user, windows_pass, env.NEXUS_USER, env.NEXUS_PASSWORD)}" ${yamlFile}
+                    """
+                }
+            }
+            if (useCredentials) {
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
+                    step()
+                }
+            } else {
+                step()
+            }
+        }
+    }
+
+    // Pipeline execution
+    stage("Checkout SCM") {
+        cleanWs()
+        checkout scm
+    }
+
+    properties([
+        parameters([
+            [
+                $class: 'ChoiceParameter',
+                choiceType: 'PT_SINGLE_SELECT',
+                description: 'Select Build Type',
+                name: 'build_type',
+                randomName: 'choice-parameter-5631314439613978',
                 script: [
-                    classpath: [], 
-                    sandbox: true, 
-                    script: '''
-                    if ( build_type == "Verify"){
-                        return [
-                                'check_connection_linux',
-                                'check_connection_windows'
-                                ]
-                    } else if (build_type == "Install") {
-                        return [
-                                'install_linux_xdr',
-                                'install_linux_prisma',
-                                'install_windows_xdr',
-                                'install_windows_prisma'
-                                ]
-                    } else if (build_type == "Rollback") {
-                        return [
-                                'rollback_linux_xdr',
-                                'rollback_linux_prisma',
-                                'rollback_windows_xdr',
-                                'rollback_windows_prisma'
-                                ]
-                    } 
-                    '''
+                    $class: 'GroovyScript',
+                    fallbackScript: [classpath: [], sandbox: true, script: 'return[\'Could not get build type\']'],
+                    script: [classpath: [], sandbox: true, script: 'return ["Verify", "Install", "Rollback"]']
+                ]
+            ],
+            [
+                $class: 'CascadeChoiceParameter',
+                choiceType: 'PT_CHECKBOX',
+                description: 'Select PlayBook',
+                filterLength: 1,
+                filterable: true,
+                name: 'ansiblePlaybook',
+                randomName: 'choice-parameter-banca-5631314456178620',
+                referencedParameters: 'build_type',
+                script: [
+                    $class: 'GroovyScript',
+                    fallbackScript: [classpath: [], sandbox: true, script: 'return[\'Plz choose something in list\']'],
+                    script: [
+                        classpath: [], sandbox: true,
+                        script: '''
+                            if (build_type == "Verify") {
+                                return ['check_connection_linux', 'check_connection_windows']
+                            } else if (build_type == "Install") {
+                                return ['install_linux_xdr', 'install_linux_prisma', 'install_windows_xdr', 'install_windows_prisma']
+                            } else if (build_type == "Rollback") {
+                                return ['rollback_linux_xdr', 'rollback_linux_prisma', 'rollback_windows_xdr', 'rollback_windows_prisma']
+                            }
+                        '''
+                    ]
                 ]
             ]
-        ]
+        ])
     ])
-])
 
-def para_return = "${params.ansiblePlaybook}"
-def listServices = para_return.split(',')
-echo "Build Selected is: ${listServices}"
+    def selectedPlaybooks = params.ansiblePlaybook.split(',')
+    echo "Build Selected is: ${selectedPlaybooks}"
 
-if (listServices.contains("check_connection_linux")){
-  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
-    withVault([configuration: configuration, vaultSecrets: secrets]) {
-      stage("Check connection for Linux") {
-        sh """
-        ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass} nexus_user=${NEXUS_USER} nexus_password=${NEXUS_PASSWORD}" check_connection_linux.yaml
-        """
-      }
+    // Run selected playbooks
+    selectedPlaybooks.each { playbook ->
+        if (playbookConfig.containsKey(playbook)) {
+            def config = playbookConfig[playbook]
+            runAnsiblePlaybook(config.stageName, config.yamlFile, config.credentials, config.extraVars)
+        } else {
+            error "Unknown playbook: ${playbook}"
+        }
     }
-  }
-}
-if (listServices.contains("check_connection_windows")){
-  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
-    withVault([configuration: configuration, vaultSecrets: secrets]) {
-      stage("Check connection for Windows") {
-        sh """
-        ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass} nexus_user=${NEXUS_USER} nexus_password=${NEXUS_PASSWORD}" check_connection_windows.yaml
-        """
-      }
-    }
-  }
-}
-
-// ------------------ Linux XDR ------------------
-if (listServices.contains("install_linux_xdr")){
-  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
-    withVault([configuration: configuration, vaultSecrets: secrets]) {
-      stage("Install Linux XDR Agent") {
-        sh """
-        ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass} nexus_user=${NEXUS_USER} nexus_password=${NEXUS_PASSWORD}" install_linux_xdr.yaml
-        """
-      }
-    }
-  }
-}
-
-if (listServices.contains("rollback_linux_xdr")){
-  withVault([configuration: configuration, vaultSecrets: secrets]) {
-    stage("Rollback Linux XDR") {
-      sh """
-      ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass}" rollback_linux_xdr.yaml
-      """
-    }
-  }
-}
-
-// ------------------ Linux Prisma ------------------
-if (listServices.contains("install_linux_prisma")){
-  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
-    withVault([configuration: configuration, vaultSecrets: secrets]) {
-      stage("Install Linux Prisma Cloud") {
-        sh """
-        ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass}" install_linux_prisma.yaml
-        """
-      }
-    }
-  }
-}
-
-if (listServices.contains("rollback_linux_prisma")){
-  withVault([configuration: configuration, vaultSecrets: secrets]) {
-    stage("Rollback Linux Prisma Cloud") {
-      sh """
-      ansible-playbook -i host --extra-vars "linux_user=${linux_user} linux_pass=${linux_pass}" rollback_linux_prisma.yaml
-      """
-    }
-  }
-}
-
-// ------------------ Windows XDR ------------------
-if (listServices.contains("install_windows_xdr")){
-  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
-    withVault([configuration: configuration, vaultSecrets: secrets]) {
-      stage("Install Windows XDR Agent") {
-        sh """
-        ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass} nexus_user=${NEXUS_USER} nexus_password=${NEXUS_PASSWORD}" install_windows_xdr.yaml
-        """
-      }
-    }
-  }
-}
-
-if (listServices.contains("rollback_windows_xdr")){
-  withVault([configuration: configuration, vaultSecrets: secrets]) {
-    stage("Rollback Windows XDR") {
-      sh """
-      ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass}" rollback_windows_xdr.yaml
-      """
-    }
-  }
-}
-
-// ------------------ Windows Prisma ------------------
-if (listServices.contains("install_windows_prisma")){
-  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
-    withVault([configuration: configuration, vaultSecrets: secrets]) {
-      stage("Install Windows Prisma Cloud") {
-        sh """
-        ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass}" install_windows_prisma.yaml
-        """
-      }
-    }
-  }
-}
-
-if (listServices.contains("rollback_windows_prisma")){
-  withVault([configuration: configuration, vaultSecrets: secrets]) {
-    stage("Rollback Windows Prisma Cloud") {
-      sh """
-      ansible-playbook -i host --extra-vars "win_user=${windows_user} win_pass=${windows_pass}" rollback_windows_prisma.yaml
-      """
-    }
-  }
-}
 }
