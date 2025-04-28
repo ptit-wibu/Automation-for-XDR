@@ -44,6 +44,17 @@ pipeline {
 }
 */
 
+// Định nghĩa phương thức bên ngoài block node
+def runAnsiblePlaybook(playbook, extraVars) {
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
+        withVault([configuration: configuration, vaultSecrets: secrets]) {
+            sh """
+            ansible-playbook -i host --extra-vars "${extraVars}" ${playbook}
+            """
+        }
+    }
+}
+
 node { 
   def VAULT_ADDR = 'http://172.22.3.91:8200/'
   def VAULT_PATH_SSH = 'linux'
@@ -66,17 +77,6 @@ node {
         engineVersion: 2
   ]   
   
-  // Helper function to run ansible playbook
-  def runAnsiblePlaybook(playbook, extraVars) {
-    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]){
-      withVault([configuration: configuration, vaultSecrets: secrets]) {
-        sh """
-        ansible-playbook -i host --extra-vars "${extraVars}" ${playbook}
-        """
-      }
-    }
-  }
-
   stage("Checkout SCM") {
     cleanWs()
     checkout scm
