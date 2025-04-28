@@ -44,6 +44,26 @@ pipeline {
 }
 */
 
+// Define helper function outside the node block
+def runAnsiblePlaybook(String stageName, String yamlFile, boolean useCredentials, Closure extraVarsClosure, Map configuration, List secrets, String nexusCred) {
+    stage(stageName) {
+        def step = {
+            withVault([configuration: configuration, vaultSecrets: secrets]) {
+                sh """
+                    ansible-playbook -i host --extra-vars "${extraVarsClosure.call(linux_user, linux_pass, windows_user, windows_pass, env.NEXUS_USER, env.NEXUS_PASSWORD)}" ${yamlFile}
+                """
+            }
+        }
+        if (useCredentials) {
+            withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: nexusCred, usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
+                step()
+            }
+        } else {
+            step()
+        }
+    }
+}
+
 node {
     // Configuration
     def VAULT_ADDR = 'http://172.22.3.91:8200/'
@@ -73,7 +93,7 @@ node {
             stageName: 'Check connection for Linux',
             yamlFile: 'check_connection_linux.yaml',
             credentials: true,
-            extraVars: { linux_user, linux_pass, nexus_user, nexus_password ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "linux_user=${linux_user} linux_pass=${linux_pass} nexus_user=${nexus_user} nexus_password=${nexus_password}"
             }
         ],
@@ -89,7 +109,7 @@ node {
             stageName: 'Install Linux XDR Agent',
             yamlFile: 'install_linux_xdr.yaml',
             credentials: true,
-            extraVars: { linux_user, linux_pass, nexus_user, nexus_password ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "linux_user=${linux_user} linux_pass=${linux_pass} nexus_user=${nexus_user} nexus_password=${nexus_password}"
             }
         ],
@@ -97,7 +117,7 @@ node {
             stageName: 'Rollback Linux XDR',
             yamlFile: 'rollback_linux_xdr.yaml',
             credentials: false,
-            extraVars: { linux_user, linux_pass ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass ->
                 "linux_user=${linux_user} linux_pass=${linux_pass}"
             }
         ],
@@ -105,7 +125,7 @@ node {
             stageName: 'Install Linux Prisma Cloud',
             yamlFile: 'install_linux_prisma.yaml',
             credentials: true,
-            extraVars: { linux_user, linux_pass ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass ->
                 "linux_user=${linux_user} linux_pass=${linux_pass}"
             }
         ],
@@ -113,7 +133,7 @@ node {
             stageName: 'Rollback Linux Prisma Cloud',
             yamlFile: 'rollback_linux_prisma.yaml',
             credentials: false,
-            extraVars: { linux_user, linux_pass ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass ->
                 "linux_user=${linux_user} linux_pass=${linux_pass}"
             }
         ],
@@ -121,7 +141,7 @@ node {
             stageName: 'Install Windows XDR Agent',
             yamlFile: 'install_windows_xdr.yaml',
             credentials: true,
-            extraVars: { win_user, win_pass, nexus_user, nexus_password ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "win_user=${win_user} win_pass=${win_pass} nexus_user=${nexus_user} nexus_password=${nexus_password}"
             }
         ],
@@ -129,7 +149,7 @@ node {
             stageName: 'Rollback Windows XDR',
             yamlFile: 'rollback_windows_xdr.yaml',
             credentials: false,
-            extraVars: { win_user, win_pass ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass ->
                 "win_user=${win_user} win_pass=${win_pass}"
             }
         ],
@@ -137,7 +157,7 @@ node {
             stageName: 'Install Windows Prisma Cloud',
             yamlFile: 'install_windows_prisma.yaml',
             credentials: true,
-            extraVars: { win_user, win_pass ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass ->
                 "win_user=${win_user} win_pass=${win_pass}"
             }
         ],
@@ -145,31 +165,11 @@ node {
             stageName: 'Rollback Windows Prisma Cloud',
             yamlFile: 'rollback_windows_prisma.yaml',
             credentials: false,
-            extraVars: { win_user, win_pass ->
+            extraVars: { linux_user, linux_pass, win_user, win_pass ->
                 "win_user=${win_user} win_pass=${win_pass}"
             }
         ]
     ]
-
-    // Helper function to run Ansible playbook
-    def runAnsiblePlaybook(String stageName, String yamlFile, boolean useCredentials, Closure extraVarsClosure) {
-        stage(stageName) {
-            def step = {
-                withVault([configuration: configuration, vaultSecrets: secrets]) {
-                    sh """
-                        ansible-playbook -i host --extra-vars "${extraVarsClosure.call(linux_user, linux_pass, windows_user, windows_pass, env.NEXUS_USER, env.NEXUS_PASSWORD)}" ${yamlFile}
-                    """
-                }
-            }
-            if (useCredentials) {
-                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: "${NEXUS_CRED}", usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD']]) {
-                    step()
-                }
-            } else {
-                step()
-            }
-        }
-    }
 
     // Pipeline execution
     stage("Checkout SCM") {
@@ -227,7 +227,7 @@ node {
     selectedPlaybooks.each { playbook ->
         if (playbookConfig.containsKey(playbook)) {
             def config = playbookConfig[playbook]
-            runAnsiblePlaybook(config.stageName, config.yamlFile, config.credentials, config.extraVars)
+            runAnsiblePlaybook(config.stageName, config.yamlFile, config.credentials, config.extraVars, configuration, secrets, NEXUS_CRED)
         } else {
             error "Unknown playbook: ${playbook}"
         }
