@@ -1,0 +1,29 @@
+---
+
+- name: Install Cortex XDR Agent on Windows
+  hosts:
+    - svtech_window_hosts
+  vars:
+    - xdr_install_file: XDR_DucLN_Win_x64.msi
+    - install_dir: 'C:/Setup_Cortex'
+    - nexus_addr: "http://172.22.3.92:8081/"  
+
+  tasks:
+
+    - name: "Create temporary directory"
+      ansible.builtin.win_file:
+        path: "{{ install_dir }}"
+        state: directory
+
+    - name: "Download Cortex XDR installation file"
+      ansible.builtin.win_get_url:
+        url: "http://172.22.3.92:8081/repository/Cortex-XDR/Cortex_XDR/XDR_DucLN_Win_x64.msi"
+        dest: "{{ install_dir }}/"
+        url_username: "{{ nexus_user }}"
+        url_password: "{{ nexus_password }}"
+        validate_certs: no
+
+    - name: "Install Cortex XDR"
+      ansible.builtin.win_command: "msiexec /i {{ xdr_install_file }} /qn TS_ENABLED=1"
+      args:
+        chdir: "{{ install_dir }}"
