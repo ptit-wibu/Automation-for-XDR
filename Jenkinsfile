@@ -266,6 +266,7 @@ if (listServices.contains("rollback_windows_prisma")){
 }
 */
 // Define helper function outside the node block
+/*
 def runAnsiblePlaybook(String stageName, String yamlFile, boolean useCredentials, Closure extraVarsClosure, Map configuration, List secrets, String nexusCred) {
     stage(stageName) {
         def step = {
@@ -284,7 +285,7 @@ def runAnsiblePlaybook(String stageName, String yamlFile, boolean useCredentials
         }
     }
 }
-
+*/
 node {
     // Configuration
     def VAULT_ADDR = 'http://172.22.3.91:8200/'
