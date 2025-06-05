@@ -339,7 +339,7 @@ node {
             stageName: 'Rollback Linux XDR',
             yamlFile: 'rollback_linux_xdr.yaml',
             credentials: false,
-            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password -> // Giữ nguyên số lượng params để call không lỗi, dù không dùng hết
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "linux_user=${linux_user} linux_pass=${linux_pass}"
             }
         ],
@@ -347,7 +347,7 @@ node {
             stageName: 'Install Linux Prisma Cloud',
             yamlFile: 'install_linux_prisma.yaml',
             credentials: true,
-            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password -> // Giữ nguyên số lượng params
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "linux_user=${linux_user} linux_pass=${linux_pass}"
             }
         ],
@@ -355,7 +355,7 @@ node {
             stageName: 'Rollback Linux Prisma Cloud',
             yamlFile: 'rollback_linux_prisma.yaml',
             credentials: false,
-            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password -> // Giữ nguyên số lượng params
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "linux_user=${linux_user} linux_pass=${linux_pass}"
             }
         ],
@@ -371,7 +371,7 @@ node {
             stageName: 'Rollback Windows XDR',
             yamlFile: 'rollback_windows_xdr.yaml',
             credentials: false,
-            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password -> // Giữ nguyên số lượng params
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "win_user=${win_user} win_pass=${win_pass}"
             }
         ],
@@ -379,7 +379,7 @@ node {
             stageName: 'Install Windows Prisma Cloud',
             yamlFile: 'install_windows_prisma.yaml',
             credentials: true,
-            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password -> // Giữ nguyên số lượng params
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "win_user=${win_user} win_pass=${win_pass}"
             }
         ],
@@ -387,95 +387,64 @@ node {
             stageName: 'Rollback Windows Prisma Cloud',
             yamlFile: 'rollback_windows_prisma.yaml',
             credentials: false,
-            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password -> // Giữ nguyên số lượng params
+            extraVars: { linux_user, linux_pass, win_user, win_pass, nexus_user, nexus_password ->
                 "win_user=${win_user} win_pass=${win_pass}"
             }
         ]
     ]
 
-    // Pipeline execution
-    stage("Checkout SCM") {
-        cleanWs()
-        checkout scm
-    }
-
+    // Pipeline parameters
     properties([
         parameters([
-            [
-                $class: 'ChoiceParameter',
-                choiceType: 'PT_SINGLE_SELECT',
-                description: 'Select Build Type',
+            // Build type chọn (single select dropdown)
+            choice(
                 name: 'build_type',
-                randomName: 'choice-parameter-5631314439613978', // Giữ nguyên nếu không có lý do thay đổi
+                choices: ['Verify', 'Install', 'Rollback'],
+                description: 'Select Build Type'
+            ),
+
+            // Playbook chọn theo build_type, checkbox, reactive, chọn default phần tử đầu tiên
+            [
+                $class: 'ActiveChoicesReactiveParameter',
+                name: 'ansiblePlaybook',
+                description: 'Select PlayBook(s)',
+                choiceType: 'CHECKBOX',
+                referencedParameters: 'build_type',
                 script: [
                     $class: 'GroovyScript',
-                    fallbackScript: [classpath: [], sandbox: true, script: 'return[\'Could not get build type\']'],
-                    // "Verify" sẽ là default vì nó là item đầu tiên cho PT_SINGLE_SELECT
-                    script: [classpath: [], sandbox: true, script: 'return ["Verify", "Install", "Rollback"]']
-                ]
-            ],
-            [
-                $class: 'CascadeChoiceParameter',
-                choiceType: 'PT_CHECKBOX',
-                description: 'Select PlayBook',
-                filterLength: 1,
-                filterable: true,
-                name: 'ansiblePlaybook',
-                randomName: 'choice-parameter-banca-5631314456178620', // Giữ nguyên
-                referencedParameters: 'build_type',
-                script: [ // Script để sinh ra các lựa chọn playbook
-                    $class: 'GroovyScript',
-                    fallbackScript: [classpath: [], sandbox: true, script: 'return[\'Plz choose something in list\']'],
-                    script: [
-                        classpath: [], sandbox: true,
-                        script: '''
-                            if ("Verify".equals(build_type)) {
-                                return ['check_connection_linux', 'check_connection_windows']
-                            } else if ("Install".equals(build_type)) {
-                                return ['install_linux_xdr', 'install_linux_prisma', 'install_windows_xdr', 'install_windows_prisma']
-                            } else if ("Rollback".equals(build_type)) {
-                                return ['rollback_linux_xdr', 'rollback_linux_prisma', 'rollback_windows_xdr', 'rollback_windows_prisma']
-                            }
-                            return [] // Trả về danh sách rỗng nếu không khớp
-                        '''
-                    ]
-                ],
-                // THÊM defaultValueScript ĐỂ CHỌN MẶC ĐỊNH PLAYBOOK ĐẦU TIÊN
-                defaultValueScript: [
-                    $class: 'GroovyScript',
-                    fallbackScript: [classpath: [], sandbox: true, script: 'return ""'], // Không chọn gì nếu script lỗi
-                    script: [
-                        classpath: [], sandbox: true,
-                        script: '''
-                            // build_type sẽ có giá trị mặc định "Verify" khi script này chạy lần đầu
-                            if ("Verify".equals(build_type)) {
-                                return 'check_connection_linux' // Chọn playbook đầu tiên cho Verify
-                            } else if ("Install".equals(build_type)) {
-                                return 'install_linux_xdr' // Chọn playbook đầu tiên cho Install
-                            } else if ("Rollback".equals(build_type)) {
-                                return 'rollback_linux_xdr' // Chọn playbook đầu tiên cho Rollback
-                            }
-                            return "" // Không chọn gì nếu build_type không khớp
-                        '''
-                    ]
+                    sandbox: true,
+                    script: '''
+                        def options = []
+                        if (build_type == 'Verify') {
+                            options = ['check_connection_linux', 'check_connection_windows']
+                        } else if (build_type == 'Install') {
+                            options = ['install_linux_xdr', 'install_linux_prisma', 'install_windows_xdr', 'install_windows_prisma']
+                        } else if (build_type == 'Rollback') {
+                            options = ['rollback_linux_xdr', 'rollback_linux_prisma', 'rollback_windows_xdr', 'rollback_windows_prisma']
+                        }
+                        return options.collect { [value: it, selected: (it == options[0])] }
+                    '''
                 ]
             ]
         ])
     ])
 
-    // selectedPlaybooks sẽ lấy giá trị từ params.ansiblePlaybook
-    // Nếu defaultValueScript hoạt động, params.ansiblePlaybook sẽ có giá trị mặc định khi build được trigger thủ công lần đầu.
-    def selectedPlaybooks = params.ansiblePlaybook.split(',')
+    // selectedPlaybooks lấy từ params
+    def selectedPlaybooks = []
+    if (params.ansiblePlaybook instanceof String) {
+        selectedPlaybooks = params.ansiblePlaybook.split(',')
+    } else if (params.ansiblePlaybook instanceof List) {
+        selectedPlaybooks = params.ansiblePlaybook
+    }
+    
     echo "Build Type Selected is: ${params.build_type}"
     echo "Playbooks Selected are: ${selectedPlaybooks}"
 
-
-    // Run selected playbooks
+    // Chạy playbooks đã chọn
     selectedPlaybooks.each { playbookName ->
-        def trimmedPlaybookName = playbookName.trim() // Trim whitespace phòng trường hợp
+        def trimmedPlaybookName = playbookName.trim()
         if (playbookConfig.containsKey(trimmedPlaybookName)) {
             def config = playbookConfig[trimmedPlaybookName]
-            // Sửa lại cách gọi runAnsiblePlaybook để truyền đúng NEXUS_CRED
             runAnsiblePlaybook(config.stageName, config.yamlFile, config.credentials, config.extraVars, configuration, secrets, NEXUS_CRED)
         } else {
             error "Unknown playbook: ${trimmedPlaybookName}"
@@ -483,27 +452,17 @@ node {
     }
 }
 
-// Định nghĩa hàm runAnsiblePlaybook (giữ nguyên như trong code của bạn)
+// Hàm chạy Ansible Playbook như bạn có sẵn
 def runAnsiblePlaybook(String stageName, String yamlFile, boolean useCredentials, Closure extraVarsClosure, Map configuration, List secrets, String nexusCredId) {
     stage(stageName) {
         def stepLogic = {
-            // Truy cập các biến credentials từ Vault (linux_user, linux_pass, windows_user, windows_pass)
-            // và Nexus (NEXUS_USER, NEXUS_PASSWORD từ env)
-            // Biến linux_user, linux_pass,... này sẽ được unmask bởi withVault
-            // Biến NEXUS_USER, NEXUS_PASSWORD này sẽ được unmask bởi withCredentials (nếu useCredentials là true)
-            // và được gán vào môi trường (env)
-            
-            // Thực hiện gọi closure với các giá trị từ Vault và env (Nexus)
-            // Các biến linux_user, linux_pass, windows_user, windows_pass sẽ là các biến cục bộ trong scope của withVault
-            // Các biến env.NEXUS_USER, env.NEXUS_PASSWORD sẽ là các biến môi trường nếu withCredentials được gọi
-            
             def extraVarsString = extraVarsClosure.call(
-                binding.getVariables().get('linux_user'), // Lấy từ vault
-                binding.getVariables().get('linux_pass'), // Lấy từ vault
-                binding.getVariables().get('windows_user'), // Lấy từ vault
-                binding.getVariables().get('windows_pass'), // Lấy từ vault
-                useCredentials ? env.NEXUS_USER : null, // Lấy từ credentials nếu dùng
-                useCredentials ? env.NEXUS_PASSWORD : null // Lấy từ credentials nếu dùng
+                binding.getVariables().get('linux_user'),
+                binding.getVariables().get('linux_pass'),
+                binding.getVariables().get('windows_user'),
+                binding.getVariables().get('windows_pass'),
+                useCredentials ? env.NEXUS_USER : null,
+                useCredentials ? env.NEXUS_PASSWORD : null
             )
 
             sh """
@@ -517,9 +476,6 @@ def runAnsiblePlaybook(String stageName, String yamlFile, boolean useCredentials
                     stepLogic()
                 }
             } else {
-                // Nếu không dùng credentials, NEXUS_USER và NEXUS_PASSWORD sẽ không được set trong env
-                // Closure extraVars cần xử lý trường hợp này (ví dụ: không sử dụng chúng)
-                // Hoặc truyền giá trị null/rỗng như đã làm ở trên trong extraVarsClosure.call
                 stepLogic()
             }
         }
