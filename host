@@ -1,8 +1,8 @@
 [svtech_linux_hosts]
-10.1.13.67 ansible_user=demo ansible_password=kali ansible_become_password=kali
+172.22.3.122 ansible_user=xdr ansible_password=Admin@123 ansible_become_password=Admin@123
 
 [svtech_window_hosts]
-10.1.13.65 ansible_user="Administrator" ansible_password="Admin@123"
+172.22.3.184 ansible_user="Administrator" ansible_password="Admin@123"
 
 [svtech_window_hosts:vars]
 ansible_connection=winrm
