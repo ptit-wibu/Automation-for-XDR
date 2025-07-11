@@ -2,7 +2,7 @@
 172.22.3.122 ansible_user=xdr ansible_password=Admin@123 ansible_become_password=Admin@123
 
 [svtech_window_hosts]
-172.22.3.197 ansible_user="Administrator" ansible_password="Admin@123"  
+172.22.3.184 ansible_user="Administrator" ansible_password="Admin@123"  
 
 [svtech_window_hosts:vars]
 ansible_connection=winrm
